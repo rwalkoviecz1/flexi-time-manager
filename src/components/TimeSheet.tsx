@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useState } from "react"
+import { toast } from "sonner"
 
 interface TimeEntry {
   date: string
@@ -18,6 +19,8 @@ interface TimeEntry {
   secondEntry: string
   secondExit: string
   totalHours: string
+  overtime50: string
+  overtime100: string
 }
 
 export function TimeSheet() {
@@ -28,16 +31,15 @@ export function TimeSheet() {
     if (file) {
       // TODO: Implement Excel file processing
       console.log("File selected:", file.name)
+      toast.success("Arquivo importado com sucesso!")
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <Card className="mb-8">
+      <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Registros de Ponto</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="mb-4">
+        <div>
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -45,17 +47,18 @@ export function TimeSheet() {
             className="hidden"
             id="timesheet-upload"
           />
-          <Button asChild>
+          <Button asChild variant="outline">
             <label htmlFor="timesheet-upload" className="cursor-pointer">
               Importar Planilha
             </label>
           </Button>
         </div>
-        
+      </CardHeader>
+      <CardContent>
         <div className="rounded-md border">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 <TableHead>Data</TableHead>
                 <TableHead>Dia</TableHead>
                 <TableHead>1ª Entrada</TableHead>
@@ -63,12 +66,14 @@ export function TimeSheet() {
                 <TableHead>2ª Entrada</TableHead>
                 <TableHead>2ª Saída</TableHead>
                 <TableHead>Total</TableHead>
+                <TableHead>Extra 50%</TableHead>
+                <TableHead>Extra 100%</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {timeEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center text-muted-foreground h-32">
                     Nenhum registro importado
                   </TableCell>
                 </TableRow>
@@ -82,6 +87,8 @@ export function TimeSheet() {
                     <TableCell>{entry.secondEntry}</TableCell>
                     <TableCell>{entry.secondExit}</TableCell>
                     <TableCell>{entry.totalHours}</TableCell>
+                    <TableCell>{entry.overtime50}</TableCell>
+                    <TableCell>{entry.overtime100}</TableCell>
                   </TableRow>
                 ))
               )}
