@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from "react";
-import { TimeEntry, WorkdayConfigData } from "@/components/TimeSheet";
+import { TimeEntry, WorkdayConfigData } from "@/types/timesheet";
 
 interface TimesheetContextType {
   timeEntries: TimeEntry[];
