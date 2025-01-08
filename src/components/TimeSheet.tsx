@@ -40,9 +40,14 @@ export function TimeSheet() {
           const worksheet = workbook.Sheets[sheetName]
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
 
+          // Verifica se jsonData é um array
+          if (!Array.isArray(jsonData)) {
+            throw new Error("Formato de dados inválido")
+          }
+
           // Processa os dados da planilha
           const processedEntries: TimeEntry[] = jsonData.slice(1)
-            .filter(row => validateRow(row))
+            .filter((row): row is any[] => Array.isArray(row) && validateRow(row))
             .map((row: any) => {
               const entry: TimeEntry = {
                 date: row[0]?.toString() || '',
