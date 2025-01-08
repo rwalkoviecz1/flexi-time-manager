@@ -21,7 +21,7 @@ export function TimeSheet() {
     endTime: "17:00",
     breakStart: "12:00",
     breakEnd: "13:00",
-    workDays: ["1", "2", "3", "4", "5"]
+    workDays: ["SEG", "TER", "QUA", "QUI", "SEX"]
   })
 
   const validateRow = (row: any[]): boolean => {
@@ -39,7 +39,7 @@ export function TimeSheet() {
           const workbook = XLSX.read(data, { type: 'array' })
           const sheetName = workbook.SheetNames[0]
           const worksheet = workbook.Sheets[sheetName]
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[]
 
           // Verifica se jsonData é um array
           if (!Array.isArray(jsonData)) {
@@ -91,9 +91,11 @@ export function TimeSheet() {
       // Cria os dados do modelo
       const templateData = [
         ['Data', 'Dia da Semana', '1ª Entrada', '1ª Saída', '2ª Entrada', '2ª Saída'],
-        ['2024-01-08', '1', '08:00', '12:00', '13:00', '17:00'],
-        ['2024-01-09', '2', '08:00', '12:00', '13:00', '17:00'],
-        ['2024-01-10', '3', '08:00', '12:00', '13:00', '17:00']
+        ['2024-01-08', 'SEG', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-09', 'TER', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-10', 'QUA', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-11', 'QUI', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-12', 'SEX', '08:00', '12:00', '13:00', '17:00']
       ]
 
       // Cria uma nova planilha
