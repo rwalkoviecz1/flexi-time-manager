@@ -16,6 +16,8 @@ export interface WorkdayConfig {
   breakStart: string
   breakEnd: string
   workDays: string[]
+  salary?: number
+  workHoursPerDay?: number
 }
 
 export interface TimeEntry {
@@ -28,6 +30,10 @@ export interface TimeEntry {
   totalHours: string
   overtime50: string
   overtime100: string
+  hourValue?: string
+  totalValue?: string
+  overtime50Value?: string
+  overtime100Value?: string
 }
 
 export const calculateWorkHours = (entry: TimeEntry, config: WorkdayConfig): { total: string, overtime50: string, overtime100: string } => {

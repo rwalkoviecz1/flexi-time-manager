@@ -3,20 +3,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState } from "react"
+import { toast } from "sonner"
+
+export interface WorkdayConfigData {
+  startTime: string
+  endTime: string
+  breakStart: string
+  breakEnd: string
+  workDays: string[]
+  salary: number
+  workHoursPerDay: number
+}
 
 export function WorkdayConfig() {
-  const [workdayConfig, setWorkdayConfig] = useState({
+  const [workdayConfig, setWorkdayConfig] = useState<WorkdayConfigData>({
     startTime: "08:00",
     endTime: "17:00",
     breakStart: "12:00",
     breakEnd: "13:00",
-    workDays: ["1", "2", "3", "4", "5"] // 0 = Sunday, 6 = Saturday
+    workDays: ["SEG", "TER", "QUA", "QUI", "SEX"],
+    salary: 0,
+    workHoursPerDay: 8
   })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Workday config:", workdayConfig)
-    // TODO: Save configuration
+    localStorage.setItem('workdayConfig', JSON.stringify(workdayConfig))
+    toast.success("Configuração salva com sucesso!")
   }
 
   return (
@@ -61,6 +74,28 @@ export function WorkdayConfig() {
                 type="time"
                 value={workdayConfig.breakEnd}
                 onChange={(e) => setWorkdayConfig({...workdayConfig, breakEnd: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="salary">Salário Base</Label>
+              <Input
+                id="salary"
+                type="number"
+                min="0"
+                step="0.01"
+                value={workdayConfig.salary}
+                onChange={(e) => setWorkdayConfig({...workdayConfig, salary: parseFloat(e.target.value)})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="workHoursPerDay">Horas por Dia</Label>
+              <Input
+                id="workHoursPerDay"
+                type="number"
+                min="1"
+                max="24"
+                value={workdayConfig.workHoursPerDay}
+                onChange={(e) => setWorkdayConfig({...workdayConfig, workHoursPerDay: parseInt(e.target.value)})}
               />
             </div>
           </div>

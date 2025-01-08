@@ -8,21 +8,76 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import * as XLSX from 'xlsx'
-import { calculateWorkHours, type TimeEntry, type WorkdayConfig } from "@/utils/timeCalculations"
+import { calculateWorkHours, timeToMinutes, type TimeEntry, type WorkdayConfig } from "@/utils/timeCalculations"
 import { Download } from "lucide-react"
+
+export interface WorkdayConfigData {
+  startTime: string
+  endTime: string
+  breakStart: string
+  breakEnd: string
+  workDays: string[]
+  salary: number
+  workHoursPerDay: number
+}
 
 export function TimeSheet() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
-  const [workdayConfig] = useState<WorkdayConfig>({
-    startTime: "08:00",
-    endTime: "17:00",
-    breakStart: "12:00",
-    breakEnd: "13:00",
-    workDays: ["SEG", "TER", "QUA", "QUI", "SEX"]
+  const [workdayConfig, setWorkdayConfig] = useState<WorkdayConfigData>(() => {
+    const saved = localStorage.getItem('workdayConfig')
+    return saved ? JSON.parse(saved) : {
+      startTime: "08:00",
+      endTime: "17:00",
+      breakStart: "12:00",
+      breakEnd: "13:00",
+      workDays: ["SEG", "TER", "QUA", "QUI", "SEX"],
+      salary: 0,
+      workHoursPerDay: 8
+    }
   })
+
+  useEffect(() => {
+    const handleConfigChange = () => {
+      const saved = localStorage.getItem('workdayConfig')
+      if (saved) {
+        setWorkdayConfig(JSON.parse(saved))
+      }
+    }
+
+    window.addEventListener('storage', handleConfigChange)
+    return () => window.removeEventListener('storage', handleConfigChange)
+  }, [])
+
+  const calculateHourValue = () => {
+    if (!workdayConfig.salary || !workdayConfig.workHoursPerDay) {
+      toast.error("Configure o salário e as horas de trabalho primeiro!")
+      return
+    }
+
+    const daysInMonth = 22 // média de dias úteis no mês
+    const hoursPerMonth = workdayConfig.workHoursPerDay * daysInMonth
+    const hourValue = workdayConfig.salary / hoursPerMonth
+
+    const updatedEntries = timeEntries.map(entry => {
+      const hours = calculateWorkHours(entry, workdayConfig)
+      return {
+        ...entry,
+        totalHours: hours.total,
+        overtime50: hours.overtime50,
+        overtime100: hours.overtime100,
+        hourValue: hourValue.toFixed(2),
+        totalValue: (hourValue * timeToMinutes(hours.total) / 60).toFixed(2),
+        overtime50Value: (hourValue * 1.5 * timeToMinutes(hours.overtime50) / 60).toFixed(2),
+        overtime100Value: (hourValue * 2 * timeToMinutes(hours.overtime100) / 60).toFixed(2)
+      }
+    })
+
+    setTimeEntries(updatedEntries)
+    toast.success("Valores calculados com sucesso!")
+  }
 
   const validateRow = (row: any[]): boolean => {
     if (!Array.isArray(row) || row.length < 6) return false
@@ -88,7 +143,6 @@ export function TimeSheet() {
 
   const downloadTemplate = () => {
     try {
-      // Cria os dados do modelo
       const templateData = [
         ['Data', 'Dia da Semana', '1ª Entrada', '1ª Saída', '2ª Entrada', '2ª Saída'],
         ['8/1/24', 'SEG', '08:00', '12:00', '13:00', '17:00'],
@@ -98,22 +152,19 @@ export function TimeSheet() {
         ['12/1/24', 'SEX', '08:00', '12:00', '13:00', '17:00']
       ]
 
-      // Cria uma nova planilha
       const ws = XLSX.utils.aoa_to_sheet(templateData)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, "Modelo")
 
-      // Configura o estilo das células
       ws['!cols'] = [
-        { wch: 12 }, // Data
-        { wch: 15 }, // Dia da Semana
-        { wch: 10 }, // 1ª Entrada
-        { wch: 10 }, // 1ª Saída
-        { wch: 10 }, // 2ª Entrada
-        { wch: 10 }  // 2ª Saída
+        { wch: 12 },
+        { wch: 15 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 10 },
+        { wch: 10 }
       ]
 
-      // Faz o download do arquivo
       XLSX.writeFile(wb, "modelo_registro_ponto.xlsx")
       toast.success("Modelo baixado com sucesso!")
     } catch (error) {
@@ -143,6 +194,9 @@ export function TimeSheet() {
               Importar Planilha
             </label>
           </Button>
+          <Button onClick={calculateHourValue} size="sm">
+            Calcular Valores
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
@@ -159,12 +213,14 @@ export function TimeSheet() {
                 <TableHead>Total</TableHead>
                 <TableHead>Extra 50%</TableHead>
                 <TableHead>Extra 100%</TableHead>
+                <TableHead>Valor/h</TableHead>
+                <TableHead>Total R$</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {timeEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground h-32">
+                  <TableCell colSpan={11} className="text-center text-muted-foreground h-32">
                     Nenhum registro importado
                   </TableCell>
                 </TableRow>
@@ -180,6 +236,8 @@ export function TimeSheet() {
                     <TableCell>{entry.totalHours}</TableCell>
                     <TableCell>{entry.overtime50}</TableCell>
                     <TableCell>{entry.overtime100}</TableCell>
+                    <TableCell>R$ {entry.hourValue}</TableCell>
+                    <TableCell>R$ {entry.totalValue}</TableCell>
                   </TableRow>
                 ))
               )}
