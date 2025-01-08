@@ -4,30 +4,15 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useState } from "react"
 import { toast } from "sonner"
-
-export interface WorkdayConfigData {
-  startTime: string
-  endTime: string
-  breakStart: string
-  breakEnd: string
-  workDays: string[]
-  salary: number
-  workHoursPerDay: number
-}
+import { useTimesheet } from "@/contexts/TimesheetContext"
 
 export function WorkdayConfig() {
-  const [workdayConfig, setWorkdayConfig] = useState<WorkdayConfigData>({
-    startTime: "08:00",
-    endTime: "17:00",
-    breakStart: "12:00",
-    breakEnd: "13:00",
-    workDays: ["SEG", "TER", "QUA", "QUI", "SEX"],
-    salary: 0,
-    workHoursPerDay: 8
-  })
+  const { workdayConfig: savedConfig, setWorkdayConfig } = useTimesheet()
+  const [workdayConfig, setLocalWorkdayConfig] = useState(savedConfig)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    setWorkdayConfig(workdayConfig)
     localStorage.setItem('workdayConfig', JSON.stringify(workdayConfig))
     toast.success("Configuração salva com sucesso!")
   }
@@ -46,7 +31,7 @@ export function WorkdayConfig() {
                 id="startTime"
                 type="time"
                 value={workdayConfig.startTime}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, startTime: e.target.value})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, startTime: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -55,7 +40,7 @@ export function WorkdayConfig() {
                 id="endTime"
                 type="time"
                 value={workdayConfig.endTime}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, endTime: e.target.value})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, endTime: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -64,7 +49,7 @@ export function WorkdayConfig() {
                 id="breakStart"
                 type="time"
                 value={workdayConfig.breakStart}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, breakStart: e.target.value})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, breakStart: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -73,7 +58,7 @@ export function WorkdayConfig() {
                 id="breakEnd"
                 type="time"
                 value={workdayConfig.breakEnd}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, breakEnd: e.target.value})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, breakEnd: e.target.value})}
               />
             </div>
             <div className="space-y-2">
@@ -84,7 +69,7 @@ export function WorkdayConfig() {
                 min="0"
                 step="0.01"
                 value={workdayConfig.salary}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, salary: parseFloat(e.target.value)})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, salary: parseFloat(e.target.value)})}
               />
             </div>
             <div className="space-y-2">
@@ -95,7 +80,25 @@ export function WorkdayConfig() {
                 min="1"
                 max="24"
                 value={workdayConfig.workHoursPerDay}
-                onChange={(e) => setWorkdayConfig({...workdayConfig, workHoursPerDay: parseInt(e.target.value)})}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, workHoursPerDay: parseInt(e.target.value)})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="periodStart">Início do Período</Label>
+              <Input
+                id="periodStart"
+                type="date"
+                value={workdayConfig.periodStart}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, periodStart: e.target.value})}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="periodEnd">Fim do Período</Label>
+              <Input
+                id="periodEnd"
+                type="date"
+                value={workdayConfig.periodEnd}
+                onChange={(e) => setLocalWorkdayConfig({...workdayConfig, periodEnd: e.target.value})}
               />
             </div>
           </div>
