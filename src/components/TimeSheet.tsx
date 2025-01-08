@@ -12,6 +12,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import * as XLSX from 'xlsx'
 import { calculateWorkHours, type TimeEntry, type WorkdayConfig } from "@/utils/timeCalculations"
+import { Download } from "lucide-react"
 
 export function TimeSheet() {
   const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
@@ -85,11 +86,49 @@ export function TimeSheet() {
     }
   }
 
+  const downloadTemplate = () => {
+    try {
+      // Cria os dados do modelo
+      const templateData = [
+        ['Data', 'Dia da Semana', '1ª Entrada', '1ª Saída', '2ª Entrada', '2ª Saída'],
+        ['2024-01-08', '1', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-09', '2', '08:00', '12:00', '13:00', '17:00'],
+        ['2024-01-10', '3', '08:00', '12:00', '13:00', '17:00']
+      ]
+
+      // Cria uma nova planilha
+      const ws = XLSX.utils.aoa_to_sheet(templateData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, "Modelo")
+
+      // Configura o estilo das células
+      ws['!cols'] = [
+        { wch: 12 }, // Data
+        { wch: 15 }, // Dia da Semana
+        { wch: 10 }, // 1ª Entrada
+        { wch: 10 }, // 1ª Saída
+        { wch: 10 }, // 2ª Entrada
+        { wch: 10 }  // 2ª Saída
+      ]
+
+      // Faz o download do arquivo
+      XLSX.writeFile(wb, "modelo_registro_ponto.xlsx")
+      toast.success("Modelo baixado com sucesso!")
+    } catch (error) {
+      console.error("Erro ao gerar modelo:", error)
+      toast.error("Erro ao gerar o modelo para download.")
+    }
+  }
+
   return (
     <Card className="mb-8">
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Registros de Ponto</CardTitle>
-        <div>
+        <div className="flex gap-2">
+          <Button onClick={downloadTemplate} variant="outline" size="sm">
+            <Download className="mr-2 h-4 w-4" />
+            Baixar Modelo
+          </Button>
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -97,7 +136,7 @@ export function TimeSheet() {
             className="hidden"
             id="timesheet-upload"
           />
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <label htmlFor="timesheet-upload" className="cursor-pointer">
               Importar Planilha
             </label>
