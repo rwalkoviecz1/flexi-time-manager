@@ -110,6 +110,43 @@ export function TimeSheetActions() {
     }
   }
 
+  const handleFileImport = (file: File) => {
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer)
+        const workbook = XLSX.read(data, { type: 'array' })
+        const sheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[sheetName]
+        const json = XLSX.utils.sheet_to_json(worksheet)
+        
+        // Transform the imported data to match TimeEntry type
+        const formattedEntries: TimeEntry[] = json.map((row: any) => ({
+          date: row['Data'] || '',
+          weekDay: row['Dia da Semana'] || '',
+          firstEntry: row['1ª Entrada'] || '',
+          firstExit: row['1ª Saída'] || '',
+          secondEntry: row['2ª Entrada'] || '',
+          secondExit: row['2ª Saída'] || '',
+          totalHours: '00:00',
+          overtime50: '00:00',
+          overtime100: '00:00',
+          observation: 'NONE'
+        }))
+
+        setTimeEntries(formattedEntries)
+        toast.success("Planilha importada com sucesso!")
+        
+        // Calculate values immediately after import
+        calculateHourValue()
+      } catch (error) {
+        console.error("Erro ao importar planilha:", error)
+        toast.error("Erro ao importar a planilha. Verifique o formato do arquivo.")
+      }
+    }
+    reader.readAsArrayBuffer(file)
+  }
+
   return (
     <div className="flex gap-2">
       <Button onClick={downloadTemplate} variant="outline" size="sm">
@@ -122,17 +159,7 @@ export function TimeSheetActions() {
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) {
-            const reader = new FileReader()
-            reader.onload = (event) => {
-              const data = new Uint8Array(event.target?.result as ArrayBuffer)
-              const workbook = XLSX.read(data, { type: 'array' })
-              const sheetName = workbook.SheetNames[0]
-              const worksheet = workbook.Sheets[sheetName]
-              const json = XLSX.utils.sheet_to_json(worksheet)
-              setTimeEntries(json as TimeEntry[])
-              toast.success("Planilha importada com sucesso!")
-            }
-            reader.readAsArrayBuffer(file)
+            handleFileImport(file)
           }
         }}
         className="hidden"
