@@ -13,6 +13,11 @@ export function TimeSheetActions() {
   const formatTimeValue = (value: any): string => {
     if (!value) return ''
     
+    // Se já estiver no formato HH:mm:ss, retorna o valor
+    if (typeof value === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(value)) {
+      return value.substring(0, 5) // Retorna apenas HH:mm
+    }
+    
     // Se já estiver no formato HH:mm, retorna o valor
     if (typeof value === 'string' && /^\d{2}:\d{2}$/.test(value)) {
       return value
@@ -20,14 +25,20 @@ export function TimeSheetActions() {
 
     // Se for um número do Excel (valor decimal representando horas)
     if (typeof value === 'number') {
-      const hours = Math.floor(value * 24)
-      const minutes = Math.floor((value * 24 * 60) % 60)
+      const totalMinutes = value * 24 * 60
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = Math.floor(totalMinutes % 60)
+      const seconds = Math.floor((totalMinutes * 60) % 60)
+      // Retorna no formato HH:mm, ignorando os segundos para manter compatibilidade
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     }
 
-    // Tenta converter string para formato HH:mm
+    // Tenta converter string para formato HH:mm:ss ou HH:mm
     try {
-      const [hours, minutes] = value.toString().split(':').map(Number)
+      const parts = value.toString().split(':').map(Number)
+      const hours = parts[0]
+      const minutes = parts[1]
+      // Retorna no formato HH:mm, ignorando os segundos para manter compatibilidade
       return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
     } catch {
       return ''
