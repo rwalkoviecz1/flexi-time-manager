@@ -12,6 +12,7 @@ export interface TimeEntry {
   totalValue?: string;
   overtime50Value?: string;
   overtime100Value?: string;
+  observation?: "NONE" | "PONTO_FACULTATIVO" | "ATESTADO" | "COMPENSACAO";
 }
 
 export interface WorkdayConfigData {
