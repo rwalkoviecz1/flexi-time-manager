@@ -4,6 +4,8 @@ import { toast } from "sonner"
 import * as XLSX from 'xlsx'
 import { calculateWorkHours, timeToMinutes } from "@/utils/timeCalculations"
 import { useTimesheet } from "@/contexts/TimesheetContext"
+import { format, eachDayOfInterval, parse } from "date-fns"
+import { ptBR } from "date-fns/locale"
 
 export function TimeSheetActions() {
   const { timeEntries, setTimeEntries, workdayConfig, setDashboardData } = useTimesheet()
@@ -62,14 +64,30 @@ export function TimeSheetActions() {
 
   const downloadTemplate = () => {
     try {
+      if (!workdayConfig.periodStart || !workdayConfig.periodEnd) {
+        toast.error("Configure as datas de início e fim do período primeiro!")
+        return
+      }
+
+      const startDate = parse(workdayConfig.periodStart, 'yyyy-MM-dd', new Date())
+      const endDate = parse(workdayConfig.periodEnd, 'yyyy-MM-dd', new Date())
+
+      const datesInRange = eachDayOfInterval({ start: startDate, end: endDate })
+
       const templateData = [
-        ['Data', 'Dia da Semana', '1ª Entrada', '1ª Saída', '2ª Entrada', '2ª Saída'],
-        ['8/1/24', 'SEG', '08:00', '12:00', '13:00', '17:00'],
-        ['9/1/24', 'TER', '08:00', '12:00', '13:00', '17:00'],
-        ['10/1/24', 'QUA', '08:00', '12:00', '13:00', '17:00'],
-        ['11/1/24', 'QUI', '08:00', '12:00', '13:00', '17:00'],
-        ['12/1/24', 'SEX', '08:00', '12:00', '13:00', '17:00']
+        ['Data', 'Dia da Semana', '1ª Entrada', '1ª Saída', '2ª Entrada', '2ª Saída']
       ]
+
+      datesInRange.forEach(date => {
+        templateData.push([
+          format(date, 'dd/MM/yyyy'),
+          format(date, 'EEE', { locale: ptBR }).toUpperCase(),
+          workdayConfig.startTime,
+          workdayConfig.breakStart,
+          workdayConfig.breakEnd,
+          workdayConfig.endTime
+        ])
+      })
 
       const ws = XLSX.utils.aoa_to_sheet(templateData)
       const wb = XLSX.utils.book_new()
@@ -101,7 +119,22 @@ export function TimeSheetActions() {
       <input
         type="file"
         accept=".xlsx,.xls"
-        onChange={(e) => {/* ... keep existing code */}}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) {
+            const reader = new FileReader()
+            reader.onload = (event) => {
+              const data = new Uint8Array(event.target?.result as ArrayBuffer)
+              const workbook = XLSX.read(data, { type: 'array' })
+              const sheetName = workbook.SheetNames[0]
+              const worksheet = workbook.Sheets[sheetName]
+              const json = XLSX.utils.sheet_to_json(worksheet)
+              setTimeEntries(json as TimeEntry[])
+              toast.success("Planilha importada com sucesso!")
+            }
+            reader.readAsArrayBuffer(file)
+          }
+        }}
         className="hidden"
         id="timesheet-upload"
       />
