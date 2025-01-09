@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Download } from "lucide-react"
 import { toast } from "sonner"
 import * as XLSX from 'xlsx'
-import { calculateWorkHours, timeToMinutes } from "@/utils/timeCalculations"
+import { calculateWorkHours, timeToMinutes, TimeEntry } from "@/utils/timeCalculations"
 import { useTimesheet } from "@/contexts/TimesheetContext"
 import { format, eachDayOfInterval, parse } from "date-fns"
 import { ptBR } from "date-fns/locale"
