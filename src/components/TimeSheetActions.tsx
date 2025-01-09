@@ -10,6 +10,30 @@ import { ptBR } from "date-fns/locale"
 export function TimeSheetActions() {
   const { timeEntries, setTimeEntries, workdayConfig, setDashboardData } = useTimesheet()
 
+  const formatTimeValue = (value: any): string => {
+    if (!value) return ''
+    
+    // Se já estiver no formato HH:mm, retorna o valor
+    if (typeof value === 'string' && /^\d{2}:\d{2}$/.test(value)) {
+      return value
+    }
+
+    // Se for um número do Excel (valor decimal representando horas)
+    if (typeof value === 'number') {
+      const hours = Math.floor(value * 24)
+      const minutes = Math.floor((value * 24 * 60) % 60)
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    }
+
+    // Tenta converter string para formato HH:mm
+    try {
+      const [hours, minutes] = value.toString().split(':').map(Number)
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+    } catch {
+      return ''
+    }
+  }
+
   const calculateHourValue = () => {
     if (!workdayConfig.salary || !workdayConfig.workHoursPerDay) {
       toast.error("Configure o salário e as horas de trabalho primeiro!")
@@ -115,7 +139,7 @@ export function TimeSheetActions() {
     reader.onload = (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer)
-        const workbook = XLSX.read(data, { type: 'array' })
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true })
         const sheetName = workbook.SheetNames[0]
         const worksheet = workbook.Sheets[sheetName]
         const json = XLSX.utils.sheet_to_json(worksheet)
@@ -124,10 +148,10 @@ export function TimeSheetActions() {
         const formattedEntries: TimeEntry[] = json.map((row: any) => ({
           date: row['Data'] || '',
           weekDay: row['Dia da Semana'] || '',
-          firstEntry: row['1ª Entrada'] || '',
-          firstExit: row['1ª Saída'] || '',
-          secondEntry: row['2ª Entrada'] || '',
-          secondExit: row['2ª Saída'] || '',
+          firstEntry: formatTimeValue(row['1ª Entrada']),
+          firstExit: formatTimeValue(row['1ª Saída']),
+          secondEntry: formatTimeValue(row['2ª Entrada']),
+          secondExit: formatTimeValue(row['2ª Saída']),
           totalHours: '00:00',
           overtime50: '00:00',
           overtime100: '00:00',
