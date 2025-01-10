@@ -4,7 +4,7 @@ import { toast } from "sonner"
 import * as XLSX from 'xlsx'
 import { calculateWorkHours, timeToMinutes, TimeEntry } from "@/utils/timeCalculations"
 import { useTimesheet } from "@/contexts/TimesheetContext"
-import { format, eachDayOfInterval, parse } from "date-fns"
+import { format, eachDayOfInterval, parse, isWeekend, isMonday, isTuesday, isWednesday, isThursday, isFriday } from "date-fns"
 import { ptBR } from "date-fns/locale"
 
 export function TimeSheetActions() {
@@ -15,7 +15,7 @@ export function TimeSheetActions() {
     
     // Se já estiver no formato HH:mm:ss, retorna o valor
     if (typeof value === 'string' && /^\d{2}:\d{2}:\d{2}$/.test(value)) {
-      return value.substring(0, 5) // Retorna apenas HH:mm
+      return value
     }
     
     // Se já estiver no formato HH:mm, retorna o valor
@@ -29,8 +29,7 @@ export function TimeSheetActions() {
       const hours = Math.floor(totalMinutes / 60)
       const minutes = Math.floor(totalMinutes % 60)
       const seconds = Math.floor((totalMinutes * 60) % 60)
-      // Retorna no formato HH:mm, ignorando os segundos para manter compatibilidade
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
     }
 
     // Tenta converter string para formato HH:mm:ss ou HH:mm
@@ -38,11 +37,26 @@ export function TimeSheetActions() {
       const parts = value.toString().split(':').map(Number)
       const hours = parts[0]
       const minutes = parts[1]
-      // Retorna no formato HH:mm, ignorando os segundos para manter compatibilidade
-      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+      const seconds = parts[2] || 0
+      return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
     } catch {
       return ''
     }
+  }
+
+  const isWorkDay = (date: Date): boolean => {
+    const dayFunctions = {
+      'SEG': isMonday,
+      'TER': isTuesday,
+      'QUA': isWednesday,
+      'QUI': isThursday,
+      'SEX': isFriday,
+    }
+    
+    return workdayConfig.workDays.some(day => {
+      const checkFunction = dayFunctions[day as keyof typeof dayFunctions]
+      return checkFunction?.(date) || false
+    })
   }
 
   const calculateHourValue = () => {
@@ -56,45 +70,83 @@ export function TimeSheetActions() {
     const hourValue = workdayConfig.salary / hoursPerMonth
 
     const updatedEntries = timeEntries.map(entry => {
+      const entryDate = new Date(entry.date.split('/').reverse().join('-'))
+      const isWeekendDay = isWeekend(entryDate)
+      const isWorkingDay = isWorkDay(entryDate)
+      
       const hours = calculateWorkHours(entry, workdayConfig)
+      const totalMinutes = timeToMinutes(hours.total)
+      const overtime50Minutes = timeToMinutes(hours.overtime50)
+      const overtime100Minutes = timeToMinutes(hours.overtime100)
+
+      // Ajusta horas extras baseado no tipo do dia
+      let adjustedOvertime50 = overtime50Minutes
+      let adjustedOvertime100 = overtime100Minutes
+
+      if (isWeekendDay || entry.observation === "PONTO_FACULTATIVO") {
+        adjustedOvertime100 = totalMinutes
+        adjustedOvertime50 = 0
+      } else if (!isWorkingDay) {
+        adjustedOvertime100 = totalMinutes
+        adjustedOvertime50 = 0
+      }
+
       return {
         ...entry,
         totalHours: hours.total,
-        overtime50: hours.overtime50,
-        overtime100: hours.overtime100,
+        overtime50: minutesToTime(adjustedOvertime50),
+        overtime100: minutesToTime(adjustedOvertime100),
         hourValue: hourValue.toFixed(2),
-        totalValue: (hourValue * timeToMinutes(hours.total) / 60).toFixed(2),
-        overtime50Value: (hourValue * 1.5 * timeToMinutes(hours.overtime50) / 60).toFixed(2),
-        overtime100Value: (hourValue * 2 * timeToMinutes(hours.overtime100) / 60).toFixed(2)
+        totalValue: (
+          (hourValue * adjustedOvertime50 / 60) * 1.5 +
+          (hourValue * adjustedOvertime100 / 60) * 2 +
+          (hourValue * (totalMinutes - adjustedOvertime50 - adjustedOvertime100) / 60)
+        ).toFixed(2)
       }
     })
 
     setTimeEntries(updatedEntries)
 
-    // Update dashboard data
-    const totalHours = updatedEntries.reduce((acc, entry) => acc + timeToMinutes(entry.totalHours), 0)
-    const overtime = updatedEntries.reduce((acc, entry) => 
-      acc + timeToMinutes(entry.overtime50) + timeToMinutes(entry.overtime100), 0)
+    // Atualiza dados do dashboard
+    const totalMinutesWorked = updatedEntries.reduce((acc, entry) => acc + timeToMinutes(entry.totalHours), 0)
+    const overtime50Total = updatedEntries.reduce((acc, entry) => acc + timeToMinutes(entry.overtime50), 0)
+    const overtime100Total = updatedEntries.reduce((acc, entry) => acc + timeToMinutes(entry.overtime100), 0)
+    
+    const currentDate = new Date()
+    const weekStart = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()))
+    
     const overtimeThisWeek = updatedEntries
       .filter(entry => {
-        const entryDate = new Date(entry.date)
-        const today = new Date()
-        const weekStart = new Date(today.setDate(today.getDate() - today.getDay()))
+        const entryDate = new Date(entry.date.split('/').reverse().join('-'))
         return entryDate >= weekStart
       })
       .reduce((acc, entry) => 
         acc + timeToMinutes(entry.overtime50) + timeToMinutes(entry.overtime100), 0)
-    
+
+    const expectedMonthlyMinutes = workdayConfig.workHoursPerDay * 60 * 22 // 22 dias úteis
+    const bankHoursBalance = totalMinutesWorked - expectedMonthlyMinutes
+
     setDashboardData({
-      totalHours: Math.floor(totalHours / 60) + "h",
-      overtimeHours: Math.floor(overtime / 60) + "h",
-      overtimeThisWeek: "+" + Math.floor(overtimeThisWeek / 60) + "h",
-      bankHours: "+" + Math.floor((totalHours - (workdayConfig.workHoursPerDay * 22 * 60)) / 60) + "h",
-      absences: updatedEntries.filter(entry => 
-        timeToMinutes(entry.totalHours) < workdayConfig.workHoursPerDay * 60).length
+      totalHours: minutesToTime(totalMinutesWorked),
+      overtimeHours: minutesToTime(overtime50Total + overtime100Total),
+      overtimeThisWeek: "+" + minutesToTime(overtimeThisWeek),
+      bankHours: (bankHoursBalance >= 0 ? "+" : "-") + minutesToTime(Math.abs(bankHoursBalance)),
+      absences: updatedEntries.filter(entry => {
+        const entryDate = new Date(entry.date.split('/').reverse().join('-'))
+        return isWorkDay(entryDate) && 
+               timeToMinutes(entry.totalHours) < workdayConfig.workHoursPerDay * 60 &&
+               entry.observation !== "PONTO_FACULTATIVO" &&
+               entry.observation !== "ATESTADO"
+      }).length
     })
 
     toast.success("Valores calculados com sucesso!")
+  }
+
+  const minutesToTime = (minutes: number): string => {
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return `${hours}h${mins > 0 ? mins + 'm' : ''}`
   }
 
   const downloadTemplate = () => {
