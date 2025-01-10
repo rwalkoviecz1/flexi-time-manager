@@ -15,7 +15,7 @@ const Index = () => {
       
       <Dashboard />
       
-      <div className="grid gap-8 md:grid-cols-2">
+      <div className="grid grid-cols-3 gap-8">
         <WorkdayConfig />
         <TimeSheet />
       </div>
